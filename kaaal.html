@@ -1,0 +1,323 @@
+
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+  background: #10131c;
+  font-family: Arial, sans-serif;
+}
+
+.calculator {
+  width: 100%;
+  max-width: 380px;
+  padding: 18px;
+  border-radius: 25px;
+  background: #1c2230;
+  box-shadow: 0 12px 35px #0006;
+}
+
+h2 {
+  color: white;
+  text-align: center;
+  margin: 0 0 16px;
+}
+
+#display {
+  width: 100%;
+  height: 95px;
+  margin-bottom: 15px;
+  padding: 12px;
+  border: 0;
+  border-radius: 15px;
+  background: #0d121b;
+  color: white;
+  font-size: clamp(28px, 8vw, 38px);
+  text-align: right;
+  outline: none;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+button {
+  min-width: 0;
+  height: 62px;
+  border: 0;
+  border-radius: 14px;
+  background: #30394b;
+  color: white;
+  font-size: 23px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:active {
+  filter: brightness(1.35);
+  transform: scale(.96);
+}
+
+.op {
+  background: #ffad42;
+  color: #171717;
+}
+
+.util {
+  background: #536176;
+}
+
+.equal {
+  background: #2ed598;
+  color: #10251c;
+}
+
+.zero {
+  grid-column: span 2;
+}
+</style>
+</head>
+
+<body>
+<div class="calculator">
+  <h2>Калькулятор</h2>
+
+  <input id="display" value="0"
+         inputmode="decimal"
+         autocomplete="off"
+         aria-label="Есептеу нәтижесі">
+
+  <div class="buttons">
+    <button class="util" data-action="clear">AC</button>
+    <button class="util" data-action="delete">DEL</button>
+    <button class="util" data-action="percent">%</button>
+    <button class="op" data-op="/">÷</button>
+
+    <button data-num="7">7</button>
+    <button data-num="8">8</button>
+    <button data-num="9">9</button>
+    <button class="op" data-op="*">×</button>
+
+    <button data-num="4">4</button>
+    <button data-num="5">5</button>
+    <button data-num="6">6</button>
+    <button class="op" data-op="-">−</button>
+
+    <button data-num="1">1</button>
+    <button data-num="2">2</button>
+    <button data-num="3">3</button>
+    <button class="op" data-op="+">+</button>
+
+    <button class="zero" data-num="0">0</button>
+    <button data-action="decimal">.</button>
+    <button class="equal" data-action="equals">=</button>
+  </div>
+</div>
+
+<script>
+const display = document.getElementById("display");
+
+let stored = null;
+let pending = null;
+let startNew = true;
+let expression = "";
+
+function format(n) {
+  if (!Number.isFinite(n)) return "Қате";
+  if (Object.is(n, -0)) n = 0;
+  return String(Number(n.toPrecision(12)));
+}
+
+function getValue() {
+  const n = Number(display.value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function calculate(a, b, op) {
+  switch (op) {
+    case "+": return a + b;
+    case "-": return a - b;
+    case "*": return a * b;
+    case "/": return b === 0 ? NaN : a / b;
+    default: return b;
+  }
+}
+
+function showError() {
+  display.value = "Қате";
+  stored = null;
+  pending = null;
+  expression = "";
+  startNew = true;
+}
+
+function inputNumber(n) {
+  if (display.value === "Қате" || startNew) {
+    display.value = n;
+    startNew = false;
+    return;
+  }
+
+  if (display.value.replace("-", "").length >= 15) return;
+
+  if (display.value === "0") {
+    display.value = n;
+  } else if (display.value === "-0") {
+    display.value = "-" + n;
+  } else {
+    display.value += n;
+  }
+}
+
+function decimal() {
+  if (display.value === "Қате" || startNew) {
+    display.value = "0.";
+    startNew = false;
+  } else if (!display.value.includes(".")) {
+    display.value += ".";
+  }
+}
+
+function chooseOperator(op) {
+  if (display.value === "Қате") return;
+
+  const current = getValue();
+
+  if (pending !== null && !startNew) {
+    const result = calculate(stored, current, pending);
+
+    if (!Number.isFinite(result)) {
+      showError();
+      return;
+    }
+
+    display.value = format(result);
+    stored = result;
+  } else if (stored === null || pending === null) {
+    stored = current;
+  }
+
+  pending = op;
+  expression = "";
+  startNew = true;
+}
+
+function equals() {
+  if (pending === null || stored === null ||
+      display.value === "Қате") return;
+
+  const result = calculate(stored, getValue(), pending);
+
+  if (!Number.isFinite(result)) {
+    showError();
+    return;
+  }
+
+  display.value = format(result);
+  stored = null;
+  pending = null;
+  expression = "";
+  startNew = true;
+}
+
+function clearAll() {
+  display.value = "0";
+  stored = null;
+  pending = null;
+  expression = "";
+  startNew = true;
+}
+
+function deleteLast() {
+  if (display.value === "Қате" || startNew) {
+    display.value = "0";
+    startNew = false;
+    return;
+  }
+
+  display.value = display.value.slice(0, -1);
+
+  if (display.value === "" || display.value === "-") {
+    display.value = "0";
+  }
+}
+
+function percent() {
+  if (display.value === "Қате") return;
+
+  const current = getValue();
+  let result = current / 100;
+
+  if (stored !== null && pending !== null &&
+      (pending === "+" || pending === "-")) {
+    result = stored * current / 100;
+    display.value = format(result);
+  } else {
+    display.value = format(result);
+  }
+
+  startNew = true;
+}
+
+document.querySelector(".buttons").addEventListener("click", (e) => {
+  const button = e.target.closest("button");
+  if (!button) return;
+
+  if (button.dataset.num !== undefined) {
+    inputNumber(button.dataset.num);
+  } else if (button.dataset.op) {
+    chooseOperator(button.dataset.op);
+  } else {
+    switch (button.dataset.action) {
+      case "clear": clearAll(); break;
+      case "delete": deleteLast(); break;
+      case "decimal": decimal(); break;
+      case "percent": percent(); break;
+      case "equals": equals(); break;
+    }
+  }
+});
+
+// Телефон және компьютер пернетақтасы
+display.addEventListener("keydown", (e) => {
+  if (e.key >= "0" && e.key <= "9") {
+    e.preventDefault();
+    inputNumber(e.key);
+  } else if (e.key === "." || e.key === ",") {
+    e.preventDefault();
+    decimal();
+  } else if (["+", "-", "*", "/"].includes(e.key)) {
+    e.preventDefault();
+    chooseOperator(e.key);
+  } else if (e.key === "Enter" || e.key === "=") {
+    e.preventDefault();
+    equals();
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    clearAll();
+  } else if (e.key === "Backspace") {
+    e.preventDefault();
+    deleteLast();
+  }
+});
+</script>
+</body>
+</html>
